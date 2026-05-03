@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>你好，世界</title>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet">
+    <title>JSON 对比工具</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -14,50 +14,659 @@
 
         body {
             font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, #F9FAFB 0%, #E5E7EB 100%);
+            background: #0F172A;
             min-height: 100vh;
+            color: #E2E8F0;
+        }
+
+        .header {
             display: flex;
-            justify-content: center;
             align-items: center;
+            justify-content: space-between;
+            padding: 1rem 2rem;
+            background: #1E293B;
+            border-bottom: 1px solid #334155;
         }
 
-        .container {
-            text-align: center;
-            padding: 2rem;
-        }
-
-        h1 {
-            font-size: clamp(2rem, 5vw, 4rem);
+        .header h1 {
+            font-size: 1.25rem;
             font-weight: 700;
-            color: #111827;
-            letter-spacing: 0.05em;
-            animation: fadeInUp 1s ease-out;
+            color: #F8FAFC;
         }
 
-        .subtitle {
-            font-size: clamp(1rem, 2.5vw, 1.5rem);
-            font-weight: 400;
-            color: #4B5563;
-            margin-top: 1rem;
-            animation: fadeInUp 1s ease-out 0.3s both;
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
         }
 
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            border: 1px solid #475569;
+            background: #334155;
+            color: #E2E8F0;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .btn:hover {
+            background: #475569;
+            border-color: #64748B;
+        }
+
+        .btn-primary {
+            background: #3B82F6;
+            border-color: #3B82F6;
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: #2563EB;
+            border-color: #2563EB;
+        }
+
+        .btn.active {
+            background: #475569;
+            border-color: #94A3B8;
+        }
+
+        .stats {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.5rem 2rem;
+            background: #1E293B;
+            border-bottom: 1px solid #334155;
+            font-size: 0.8rem;
+            color: #94A3B8;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .stat-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+        }
+
+        .stat-dot.add { background: #22C55E; }
+        .stat-dot.del { background: #EF4444; }
+        .stat-dot.mod { background: #F59E0B; }
+
+        .main {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            height: calc(100vh - 120px);
+            overflow: hidden;
+        }
+
+        .main.inline-view {
+            grid-template-columns: 1fr;
+        }
+
+        .main.inline-view .panel-b {
+            display: none;
+        }
+
+        .panel {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border-right: 1px solid #334155;
+        }
+
+        .panel:last-child {
+            border-right: none;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem 1rem;
+            background: #1E293B;
+            border-bottom: 1px solid #334155;
+            font-size: 0.8rem;
+            color: #94A3B8;
+            flex-shrink: 0;
+        }
+
+        .panel-header .label {
+            font-weight: 500;
+        }
+
+        .panel-header .status {
+            font-size: 0.75rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .status.ok { background: #064E3B; color: #34D399; }
+        .status.err { background: #450A0A; color: #F87171; }
+
+        .panel-body {
+            flex: 1;
+            overflow: auto;
+            font-family: 'Menlo', 'Monaco', 'SF Mono', 'Consolas', monospace;
+            font-size: 0.8rem;
+            line-height: 1.6;
+            padding: 0;
+            position: relative;
+        }
+
+        .editor, .diff-view {
+            width: 100%;
+            min-height: 100%;
+            padding: 1rem;
+            white-space: pre;
+            tab-size: 2;
+        }
+
+        .editor {
+            background: #0F172A;
+            color: #E2E8F0;
+            border: none;
+            outline: none;
+            resize: none;
+            font-family: inherit;
+            font-size: inherit;
+            line-height: inherit;
+        }
+
+        .diff-view {
+            display: none;
+        }
+
+        .diff-line {
+            display: flex;
+            padding: 0 1rem;
+            min-height: 1.6em;
+        }
+
+        .diff-line:hover {
+            filter: brightness(1.1);
+        }
+
+        .line-num {
+            width: 3rem;
+            text-align: right;
+            padding-right: 1rem;
+            color: #475569;
+            user-select: none;
+            flex-shrink: 0;
+        }
+
+        .line-content {
+            flex: 1;
+            white-space: pre;
+            overflow-x: auto;
+        }
+
+        .diff-add { background: rgba(34, 197, 94, 0.12); }
+        .diff-add .line-num { color: #22C55E; }
+
+        .diff-del { background: rgba(239, 68, 68, 0.12); }
+        .diff-del .line-num { color: #EF4444; }
+
+        .diff-mod { background: rgba(245, 158, 11, 0.12); }
+        .diff-mod .line-num { color: #F59E0B; }
+
+        .char-add { background: rgba(34, 197, 94, 0.35); border-radius: 2px; }
+        .char-del { background: rgba(239, 68, 68, 0.35); border-radius: 2px; }
+
+        .json-key { color: #93C5FD; }
+        .json-string { color: #86EFAC; }
+        .json-number { color: #FDBA74; }
+        .json-bool { color: #C4B5FD; }
+        .json-null { color: #94A3B8; }
+        .json-punct { color: #94A3B8; }
+
+        .empty-placeholder {
+            color: #475569;
+            text-align: center;
+            padding-top: 4rem;
+        }
+
+        .error-msg {
+            color: #F87171;
+            padding: 1rem;
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+
+        .panel-body::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .panel-body::-webkit-scrollbar-track {
+            background: #0F172A;
+        }
+        .panel-body::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        .panel-body::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        @media (max-width: 768px) {
+            .main { grid-template-columns: 1fr; }
+            .panel-b { display: none; }
+            .header { flex-direction: column; gap: 0.5rem; padding: 0.75rem 1rem; }
+            .toolbar { flex-wrap: wrap; justify-content: center; }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>你好，世界</h1>
-        <p class="subtitle">Hello, World</p>
+    <div class="header">
+        <h1>JSON 对比工具</h1>
+        <div class="toolbar">
+            <button class="btn" onclick="loadSample()">示例</button>
+            <button class="btn" onclick="clearAll()">清空</button>
+            <button class="btn" onclick="swap()">交换</button>
+            <button class="btn" id="btnSide" onclick="setView('side')">并排</button>
+            <button class="btn" id="btnInline" onclick="setView('inline')">内联</button>
+            <button class="btn btn-primary" id="btnCompare" onclick="toggleCompare()">对比</button>
+        </div>
     </div>
+
+    <div class="stats" id="stats">
+        <span>输入基准 JSON 和被测试 JSON，点击"对比"查看差异</span>
+    </div>
+
+    <div class="main" id="main">
+        <div class="panel panel-a">
+            <div class="panel-header">
+                <span class="label">基准 JSON</span>
+                <span class="status ok" id="statusA">就绪</span>
+            </div>
+            <div class="panel-body" id="bodyA">
+                <textarea class="editor" id="jsonA" placeholder="在此输入基准 JSON...">{
+  "name": "Alice",
+  "age": 25,
+  "city": "Beijing",
+  "hobbies": ["reading", "music"]
+}</textarea>
+                <div class="diff-view" id="diffA"></div>
+            </div>
+        </div>
+        <div class="panel panel-b">
+            <div class="panel-header">
+                <span class="label">被测试 JSON</span>
+                <span class="status ok" id="statusB">就绪</span>
+            </div>
+            <div class="panel-body" id="bodyB">
+                <textarea class="editor" id="jsonB" placeholder="在此输入被测试 JSON...">{
+  "name": "Alice",
+  "age": 26,
+  "country": "China",
+  "hobbies": ["reading", "travel"]
+}</textarea>
+                <div class="diff-view" id="diffB"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let viewMode = 'side';
+        let comparing = false;
+
+        function setView(mode) {
+            viewMode = mode;
+            document.getElementById('btnSide').classList.toggle('active', mode === 'side');
+            document.getElementById('btnInline').classList.toggle('active', mode === 'inline');
+            document.getElementById('main').classList.toggle('inline-view', mode === 'inline');
+            if (comparing) renderDiff();
+        }
+
+        document.getElementById('btnSide').classList.add('active');
+
+        // 同步滚动
+        const bodyA = document.getElementById('bodyA');
+        const bodyB = document.getElementById('bodyB');
+        let syncing = false;
+        function syncScroll(source, target) {
+            if (syncing) return;
+            syncing = true;
+            target.scrollTop = source.scrollTop;
+            target.scrollLeft = source.scrollLeft;
+            setTimeout(() => syncing = false, 10);
+        }
+        bodyA.addEventListener('scroll', () => syncScroll(bodyA, bodyB));
+        bodyB.addEventListener('scroll', () => syncScroll(bodyB, bodyA));
+
+        function updateStatus(id, ok, msg) {
+            const el = document.getElementById(id);
+            el.className = 'status ' + (ok ? 'ok' : 'err');
+            el.textContent = msg;
+        }
+
+        function getInput() {
+            const rawA = document.getElementById('jsonA').value;
+            const rawB = document.getElementById('jsonB').value;
+            let a, b, okA = true, okB = true;
+            try { a = JSON.parse(rawA || '{}'); } catch (e) { okA = false; updateStatus('statusA', false, '解析失败'); }
+            try { b = JSON.parse(rawB || '{}'); } catch (e) { okB = false; updateStatus('statusB', false, '解析失败'); }
+            return { a, b, okA, okB, rawA, rawB };
+        }
+
+        document.getElementById('jsonA').addEventListener('input', () => {
+            validateInput('jsonA', 'statusA');
+            enterEditMode();
+        });
+        document.getElementById('jsonB').addEventListener('input', () => {
+            validateInput('jsonB', 'statusB');
+            enterEditMode();
+        });
+
+        function validateInput(inputId, statusId) {
+            const raw = document.getElementById(inputId).value.trim();
+            if (!raw) {
+                updateStatus(statusId, true, '就绪');
+                return;
+            }
+            try {
+                JSON.parse(raw);
+                updateStatus(statusId, true, '有效');
+            } catch (e) {
+                const info = parseJsonError(e, raw);
+                updateStatus(statusId, false, `第 ${info.line} 行：${info.msg}`);
+            }
+        }
+
+        function parseJsonError(err, raw) {
+            const match = err.message.match(/position (\d+)/);
+            let line = 1;
+            let msg = err.message;
+            if (match) {
+                const pos = parseInt(match[1], 10);
+                line = (raw.slice(0, pos).match(/\n/g) || []).length + 1;
+                msg = err.message.replace(/ at position \d+.*$/, '');
+            }
+            return { line, msg };
+        }
+
+        function showEditors() {
+            document.querySelectorAll('.editor').forEach(e => e.style.display = 'block');
+            document.querySelectorAll('.diff-view').forEach(e => e.style.display = 'none');
+        }
+
+        function showDiffViews() {
+            document.querySelectorAll('.editor').forEach(e => e.style.display = 'none');
+            document.querySelectorAll('.diff-view').forEach(e => e.style.display = 'block');
+        }
+
+        function escapeHtml(t) {
+            return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        function syntaxHighlight(json) {
+            const s = JSON.stringify(json, null, 2);
+            return s.replace(/("(?:[^"\\]|\\.)*")/g, '<span class="json-string">$1</span>')
+                    .replace(/\b(true|false)\b/g, '<span class="json-bool">$1</span>')
+                    .replace(/\bnull\b/g, '<span class="json-null">null</span>')
+                    .replace(/\b(\d+\.?\d*)\b/g, '<span class="json-number">$1</span>')
+                    .replace(/([{}[\],:])/g, '<span class="json-punct">$1</span>');
+        }
+
+        function tokenizeForDiff(s) {
+            // 将字符串拆分为可比较的 token：字符串、数字、关键字、标点、空白
+            const tokens = [];
+            const re = /"(?:[^"\\]|\\.)*"|\d+\.?\d*|\btrue\b|\bfalse\b|\bnull\b|[{}[\],:]|[\s]+|./g;
+            let m;
+            while ((m = re.exec(s)) !== null) {
+                tokens.push(m[0]);
+            }
+            return tokens;
+        }
+
+        function lcsTokens(a, b) {
+            const m = a.length, n = b.length;
+            const dp = Array(m + 1).fill(0).map(() => Array(n + 1).fill(0));
+            for (let i = 1; i <= m; i++) {
+                for (let j = 1; j <= n; j++) {
+                    if (a[i-1] === b[j-1]) dp[i][j] = dp[i-1][j-1] + 1;
+                    else dp[i][j] = Math.max(dp[i-1][j], dp[i][j-1]);
+                }
+            }
+            const aligned = [];
+            let i = m, j = n;
+            while (i > 0 || j > 0) {
+                if (i > 0 && j > 0 && a[i-1] === b[j-1]) {
+                    aligned.unshift({ type: 'eq', a: a[i-1], b: b[j-1] });
+                    i--; j--;
+                } else if (j > 0 && (i === 0 || dp[i][j-1] >= dp[i-1][j])) {
+                    aligned.unshift({ type: 'add', a: null, b: b[j-1] });
+                    j--;
+                } else {
+                    aligned.unshift({ type: 'del', a: a[i-1], b: null });
+                    i--;
+                }
+            }
+            return aligned;
+        }
+
+        function charDiff(aStr, bStr) {
+            const aTok = tokenizeForDiff(aStr);
+            const bTok = tokenizeForDiff(bStr);
+            const aligned = lcsTokens(aTok, bTok);
+            let aHtml = '', bHtml = '';
+            for (const op of aligned) {
+                if (op.type === 'eq') {
+                    const esc = escapeHtml(op.a);
+                    aHtml += esc;
+                    bHtml += esc;
+                } else if (op.type === 'del') {
+                    aHtml += '<span class="char-del">' + escapeHtml(op.a) + '</span>';
+                } else if (op.type === 'add') {
+                    bHtml += '<span class="char-add">' + escapeHtml(op.b) + '</span>';
+                }
+            }
+            return { aHtml, bHtml };
+        }
+
+        function diffLines(aLines, bLines) {
+            const m = aLines.length, n = bLines.length;
+            const dp = Array(m + 1).fill(0).map(() => Array(n + 1).fill(0));
+            for (let i = 1; i <= m; i++) {
+                for (let j = 1; j <= n; j++) {
+                    if (aLines[i-1] === bLines[j-1]) dp[i][j] = dp[i-1][j-1] + 1;
+                    else dp[i][j] = Math.max(dp[i-1][j], dp[i][j-1]);
+                }
+            }
+            const result = [];
+            let i = m, j = n;
+            while (i > 0 || j > 0) {
+                if (i > 0 && j > 0 && aLines[i-1] === bLines[j-1]) {
+                    result.unshift({ type: 'eq', a: aLines[i-1], b: bLines[j-1] });
+                    i--; j--;
+                } else if (j > 0 && (i === 0 || dp[i][j-1] >= dp[i-1][j])) {
+                    result.unshift({ type: 'add', a: null, b: bLines[j-1] });
+                    j--;
+                } else {
+                    result.unshift({ type: 'del', a: aLines[i-1], b: null });
+                    i--;
+                }
+            }
+            return result;
+        }
+
+        function renderDiff() {
+            const { a, b, okA, okB } = getInput();
+            if (!okA || !okB) return;
+
+            const aStr = JSON.stringify(a, null, 2);
+            const bStr = JSON.stringify(b, null, 2);
+            const aLines = aStr.split('\n');
+            const bLines = bStr.split('\n');
+            const dLines = diffLines(aLines, bLines);
+
+            // 构建对齐的行，每个元素是 { aNum, bNum, aLine, bLine, type }
+            // type: eq, add, del, mod
+            let aNum = 1, bNum = 1;
+            const rows = [];
+            for (const op of dLines) {
+                if (op.type === 'eq') {
+                    rows.push({ aNum: aNum++, bNum: bNum++, aLine: op.a, bLine: op.b, type: 'eq' });
+                } else if (op.type === 'del') {
+                    rows.push({ aNum: aNum++, bNum: null, aLine: op.a, bLine: null, type: 'del' });
+                } else if (op.type === 'add') {
+                    rows.push({ aNum: null, bNum: bNum++, aLine: null, bLine: op.b, type: 'add' });
+                }
+            }
+
+            // 合并相邻的 del + add 为 mod（字符级差异）
+            let stats = { add: 0, del: 0, mod: 0 };
+            for (let i = 0; i < rows.length; i++) {
+                if (rows[i].type === 'del' && i + 1 < rows.length && rows[i+1].type === 'add') {
+                    const cd = charDiff(rows[i].aLine, rows[i+1].bLine);
+                    rows[i] = {
+                        aNum: rows[i].aNum, bNum: rows[i+1].bNum,
+                        aLine: cd.aHtml, bLine: cd.bHtml,
+                        type: 'mod'
+                    };
+                    rows.splice(i+1, 1);
+                    stats.mod++;
+                } else if (rows[i].type === 'eq') {
+                    // nothing
+                } else if (rows[i].type === 'del') {
+                    stats.del++;
+                } else if (rows[i].type === 'add') {
+                    stats.add++;
+                }
+            }
+
+            let aOut = '', bOut = '';
+            for (const row of rows) {
+                if (row.type === 'eq') {
+                    aOut += lineHtml(row.aNum, 'eq', escapeHtml(row.aLine));
+                    bOut += lineHtml(row.bNum, 'eq', escapeHtml(row.bLine));
+                } else if (row.type === 'del') {
+                    aOut += lineHtml(row.aNum, 'del', escapeHtml(row.aLine));
+                    bOut += lineHtml('', 'empty', '');
+                } else if (row.type === 'add') {
+                    aOut += lineHtml('', 'empty', '');
+                    bOut += lineHtml(row.bNum, 'add', escapeHtml(row.bLine));
+                } else if (row.type === 'mod') {
+                    aOut += lineHtml(row.aNum, 'mod', row.aLine);
+                    bOut += lineHtml(row.bNum, 'mod', row.bLine);
+                }
+            }
+
+            document.getElementById('diffA').innerHTML = aOut;
+            document.getElementById('diffB').innerHTML = bOut;
+
+            updateStats(stats);
+            showDiffViews();
+        }
+
+        function lineHtml(num, type, content) {
+            const cls = type === 'eq' || type === 'empty' ? '' : ` diff-${type}`;
+            const n = num === '' || num === null ? '&nbsp;' : num;
+            const c = content === '' || content === null ? '&nbsp;' : content;
+            return `<div class="diff-line${cls}"><span class="line-num">${n}</span><span class="line-content">${c}</span></div>`;
+        }
+
+        function updateStats(s) {
+            const total = s.add + s.del + s.mod;
+            document.getElementById('stats').innerHTML = `
+                <span>共发现 ${total} 处差异</span>
+                <span class="stat-item"><span class="stat-dot add"></span>多了 ${s.add}</span>
+                <span class="stat-item"><span class="stat-dot del"></span>少了 ${s.del}</span>
+                <span class="stat-item"><span class="stat-dot mod"></span>改了 ${s.mod}</span>
+            `;
+        }
+
+        function toggleCompare() {
+            if (comparing) {
+                enterEditMode();
+                return;
+            }
+            const rawA = document.getElementById('jsonA').value.trim();
+            const rawB = document.getElementById('jsonB').value.trim();
+            if (rawA) {
+                try { JSON.parse(rawA); } catch (e) {
+                    const info = parseJsonError(e, rawA);
+                    updateStatus('statusA', false, `第 ${info.line} 行：${info.msg}`);
+                    return;
+                }
+            }
+            if (rawB) {
+                try { JSON.parse(rawB); } catch (e) {
+                    const info = parseJsonError(e, rawB);
+                    updateStatus('statusB', false, `第 ${info.line} 行：${info.msg}`);
+                    return;
+                }
+            }
+            updateStatus('statusA', true, '有效');
+            updateStatus('statusB', true, '有效');
+            comparing = true;
+            document.getElementById('btnCompare').textContent = '编辑';
+            renderDiff();
+        }
+
+        function enterEditMode() {
+            comparing = false;
+            document.getElementById('btnCompare').textContent = '对比';
+            showEditors();
+            document.getElementById('stats').innerHTML = '<span>输入基准 JSON 和被测试 JSON，点击"对比"查看差异</span>';
+        }
+
+        // 点击 diff-view 区域回到编辑模式
+        document.getElementById('diffA').addEventListener('click', enterEditMode);
+        document.getElementById('diffB').addEventListener('click', enterEditMode);
+
+        function loadSample() {
+            document.getElementById('jsonA').value = JSON.stringify({
+                name: "Alice",
+                age: 25,
+                city: "Beijing",
+                hobbies: ["reading", "music"],
+                active: true
+            }, null, 2);
+            document.getElementById('jsonB').value = JSON.stringify({
+                name: "Alice",
+                age: 26,
+                country: "China",
+                hobbies: ["reading", "travel"],
+                active: true
+            }, null, 2);
+            updateStatus('statusA', true, '就绪');
+            updateStatus('statusB', true, '就绪');
+            showEditors();
+            comparing = false;
+            document.getElementById('btnCompare').textContent = '对比';
+        }
+
+        function clearAll() {
+            document.getElementById('jsonA').value = '';
+            document.getElementById('jsonB').value = '';
+            updateStatus('statusA', true, '就绪');
+            updateStatus('statusB', true, '就绪');
+            document.getElementById('stats').innerHTML = '<span>输入基准 JSON 和被测试 JSON，点击"对比"查看差异</span>';
+            showEditors();
+            comparing = false;
+            document.getElementById('btnCompare').textContent = '对比';
+        }
+
+        function swap() {
+            const a = document.getElementById('jsonA').value;
+            const b = document.getElementById('jsonB').value;
+            document.getElementById('jsonA').value = b;
+            document.getElementById('jsonB').value = a;
+            showEditors();
+            comparing = false;
+            document.getElementById('btnCompare').textContent = '对比';
+        }
+    </script>
 </body>
 </html>

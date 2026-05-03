@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON 对比工具</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #F9FAFB 0%, #E5E7EB 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .header p {
+            font-size: 1rem;
+            color: #6B7280;
+            margin-top: 0.5rem;
+        }
+
+        .main {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .panels {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .panels {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .panel-header {
+            padding: 1rem 1.25rem;
+            background: #F3F4F6;
+            border-bottom: 1px solid #E5E7EB;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .panel-header .label {
+            font-weight: 500;
+            font-size: 0.95rem;
+            color: #374151;
+        }
+
+        .panel-header .badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.6rem;
+            border-radius: 9999px;
+            font-weight: 500;
+        }
+
+        .badge-a {
+            background: #DBEAFE;
+            color: #1E40AF;
+        }
+
+        .badge-b {
+            background: #D1FAE5;
+            color: #065F46;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 320px;
+            border: none;
+            padding: 1rem 1.25rem;
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: #1F2937;
+            resize: vertical;
+            outline: none;
+        }
+
+        textarea::placeholder {
+            color: #9CA3AF;
+        }
+
+        .actions {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 2rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #2563EB;
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: #1D4ED8;
+        }
+
+        .result {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+
+        .result-header {
+            padding: 1rem 1.25rem;
+            background: #F3F4F6;
+            border-bottom: 1px solid #E5E7EB;
+            font-weight: 500;
+            color: #374151;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .result-body {
+            padding: 1.25rem;
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 0.85rem;
+            line-height: 1.7;
+            min-height: 120px;
+        }
+
+        .diff-line {
+            display: flex;
+            gap: 0.75rem;
+            padding: 0.15rem 0;
+            border-radius: 4px;
+        }
+
+        .diff-marker {
+            width: 1.5rem;
+            text-align: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .diff-content {
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .diff-add {
+            background: #ECFDF5;
+        }
+        .diff-add .diff-marker {
+            color: #059669;
+        }
+
+        .diff-del {
+            background: #FEF2F2;
+        }
+        .diff-del .diff-marker {
+            color: #DC2626;
+        }
+
+        .diff-mod {
+            background: #FFFBEB;
+        }
+        .diff-mod .diff-marker {
+            color: #D97706;
+        }
+
+        .diff-ok {
+            color: #6B7280;
+        }
+
+        .legend {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.8rem;
+            color: #6B7280;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 2px;
+        }
+
+        .dot-add { background: #10B981; }
+        .dot-del { background: #EF4444; }
+        .dot-mod { background: #F59E0B; }
+
+        .empty-state {
+            color: #9CA3AF;
+            text-align: center;
+            padding: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>JSON 对比工具</h1>
+        <p>输入两个 JSON，快速找出它们之间的差异</p>
+    </div>
+
+    <div class="main">
+        <div class="panels">
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="label">JSON A</span>
+                    <span class="badge badge-a">原始</span>
+                </div>
+                <textarea id="jsonA" placeholder="在此输入第一个 JSON...">{
+  "name": "Alice",
+  "age": 25,
+  "city": "Beijing",
+  "hobbies": ["reading", "music"]
+}</textarea>
+            </div>
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="label">JSON B</span>
+                    <span class="badge badge-b">对比</span>
+                </div>
+                <textarea id="jsonB" placeholder="在此输入第二个 JSON...">{
+  "name": "Alice",
+  "age": 26,
+  "country": "China",
+  "hobbies": ["reading", "travel"]
+}</textarea>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button class="btn btn-primary" onclick="compare()">开始对比</button>
+        </div>
+
+        <div class="result">
+            <div class="result-header">
+                <span>对比结果</span>
+                <div class="legend">
+                    <div class="legend-item"><span class="dot dot-add"></span>新增</div>
+                    <div class="legend-item"><span class="dot dot-del"></span>删除</div>
+                    <div class="legend-item"><span class="dot dot-mod"></span>修改</div>
+                </div>
+            </div>
+            <div class="result-body" id="result">
+                <div class="empty-state">点击"开始对比"查看差异</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function compare() {
+            const rawA = document.getElementById('jsonA').value;
+            const rawB = document.getElementById('jsonB').value;
+            const result = document.getElementById('result');
+
+            let a, b;
+            try {
+                a = JSON.parse(rawA || '{}');
+            } catch (e) {
+                result.innerHTML = '<div class="diff-line diff-del"><span class="diff-marker">!</span><span class="diff-content">JSON A 解析失败: ' + e.message + '</span></div>';
+                return;
+            }
+            try {
+                b = JSON.parse(rawB || '{}');
+            } catch (e) {
+                result.innerHTML = '<div class="diff-line diff-del"><span class="diff-marker">!</span><span class="diff-content">JSON B 解析失败: ' + e.message + '</span></div>';
+                return;
+            }
+
+            const diffs = [];
+            diffValue(a, b, '', diffs);
+
+            if (diffs.length === 0) {
+                result.innerHTML = '<div class="diff-line diff-ok"><span class="diff-content">两个 JSON 完全一致</span></div>';
+            } else {
+                result.innerHTML = diffs.map(d => {
+                    let cls = 'diff-mod';
+                    let marker = '~';
+                    if (d.type === 'add') { cls = 'diff-add'; marker = '+'; }
+                    if (d.type === 'del') { cls = 'diff-del'; marker = '-'; }
+                    return `<div class="diff-line ${cls}"><span class="diff-marker">${marker}</span><span class="diff-content">${escapeHtml(d.text)}</span></div>`;
+                }).join('');
+            }
+        }
+
+        function diffValue(a, b, path, out) {
+            const ta = typeof a;
+            const tb = typeof b;
+
+            if (ta !== tb) {
+                out.push({ type: 'mod', text: `${path || '(root)'}: 类型不同 → ${formatVal(a)} / ${formatVal(b)}` });
+                return;
+            }
+
+            if (ta !== 'object' || a === null || b === null) {
+                if (JSON.stringify(a) !== JSON.stringify(b)) {
+                    out.push({ type: 'mod', text: `${path || '(root)'}: ${formatVal(a)} → ${formatVal(b)}` });
+                }
+                return;
+            }
+
+            if (Array.isArray(a) !== Array.isArray(b)) {
+                out.push({ type: 'mod', text: `${path || '(root)'}: 类型不同 → 数组 / 对象` });
+                return;
+            }
+
+            if (Array.isArray(a)) {
+                const len = Math.max(a.length, b.length);
+                for (let i = 0; i < len; i++) {
+                    const p = `${path}[${i}]`;
+                    if (i >= a.length) {
+                        out.push({ type: 'add', text: `${p}: ${formatVal(b[i])}` });
+                    } else if (i >= b.length) {
+                        out.push({ type: 'del', text: `${p}: ${formatVal(a[i])}` });
+                    } else {
+                        diffValue(a[i], b[i], p, out);
+                    }
+                }
+                return;
+            }
+
+            const keysA = Object.keys(a);
+            const keysB = Object.keys(b);
+            const all = new Set([...keysA, ...keysB]);
+            for (const k of all) {
+                const p = path ? `${path}.${k}` : k;
+                if (!(k in a)) {
+                    out.push({ type: 'add', text: `${p}: ${formatVal(b[k])}` });
+                } else if (!(k in b)) {
+                    out.push({ type: 'del', text: `${p}: ${formatVal(a[k])}` });
+                } else {
+                    diffValue(a[k], b[k], p, out);
+                }
+            }
+        }
+
+        function formatVal(v) {
+            if (v === null) return 'null';
+            if (typeof v === 'string') return `"${v}"`;
+            if (typeof v === 'object') return JSON.stringify(v);
+            return String(v);
+        }
+
+        function escapeHtml(t) {
+            return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+    </script>
+</body>
+</html>
