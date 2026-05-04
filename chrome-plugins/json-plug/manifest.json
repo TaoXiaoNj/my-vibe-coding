@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "JSON 格式化工具",
+  "version": "1.0",
+  "description": "输入 JSON 字符串并格式化显示",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "JSON 格式化"
+  }
+}
