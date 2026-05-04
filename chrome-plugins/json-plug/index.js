@@ -7,7 +7,7 @@ function formatJson() {
   const error = document.getElementById('error');
 
   error.textContent = '';
-  output.textContent = '';
+  output.innerHTML = '';
 
   if (!input) {
     error.textContent = '请输入 JSON 字符串';
@@ -16,7 +16,9 @@ function formatJson() {
 
   try {
     const parsed = JSON.parse(input);
-    output.textContent = JSON.stringify(parsed, null, 2);
+    const formatted = JSON.stringify(parsed, null, 2);
+    const highlighted = hljs.highlight(formatted, { language: 'json' });
+    output.innerHTML = highlighted.value;
   } catch (e) {
     error.textContent = 'JSON 解析错误: ' + e.message;
   }

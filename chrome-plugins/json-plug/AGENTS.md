@@ -36,7 +36,7 @@
 ## 功能增强计划
 
 ### 功能增强
-- [ ] JSON 语法高亮（highlight.js 或 Prism）
+- [x] JSON 语法高亮（highlight.js）
 - [ ] 折叠/展开 JSON 节点
 - [ ] 复制格式化结果按钮
 - [ ] 一键压缩 JSON（去掉缩进）
@@ -59,4 +59,4 @@
 
 ## 当前进度
 
-暂无进行中的功能
+- [x] JSON 语法高亮（highlight.js）
