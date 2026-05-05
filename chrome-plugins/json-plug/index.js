@@ -52,22 +52,21 @@ function renderObject(obj, indent) {
     return '<span class="json-bracket">{}</span>';
   }
 
-  let html = '<span class="json-collapsible"><span class="json-bracket">{</span></span>';
-  html += '<span class="json-content">';
-  html += '<span class="json-item">';
+  const open = '<span class="json-toggle">{</span>';
+  const close = '<span class="json-close json-bracket">}</span>';
+  const collapsedPreview = '<span class="json-collapsed-preview">...}</span>';
 
+  let items = '';
   keys.forEach((key, i) => {
     const comma = i < keys.length - 1 ? '<span class="json-comma">,</span>' : '';
-    html += `\n${'  '.repeat(indent + 1)}<span class="json-key">"${escapeHtml(key)}"</span><span class="json-colon">:</span> `;
-    html += renderJson(obj[key], indent + 1);
-    html += `${comma}`;
+    items += `\n${'  '.repeat(indent + 1)}<span class="json-key">"${escapeHtml(key)}"</span><span class="json-colon">:</span> `;
+    items += renderJson(obj[key], indent + 1);
+    items += `${comma}`;
   });
 
-  html += `\n${'  '.repeat(indent)}</span>`;
-  html += '<span class="json-bracket">}</span>';
-  html += '</span>';
+  const content = `<span class="json-content"><span class="json-item">${items}\n${'  '.repeat(indent)}</span></span>`;
 
-  return html;
+  return `<span class="json-line">${open}${collapsedPreview}${content}${close}</span>`;
 }
 
 function renderArray(arr, indent) {
@@ -75,26 +74,25 @@ function renderArray(arr, indent) {
     return '<span class="json-bracket">[]</span>';
   }
 
-  let html = '<span class="json-collapsible"><span class="json-bracket">[</span></span>';
-  html += '<span class="json-content">';
-  html += '<span class="json-item">';
+  const open = '<span class="json-toggle" data-type="array">[</span>';
+  const close = '<span class="json-close json-bracket">]</span>';
+  const collapsedPreview = '<span class="json-collapsed-preview">...]</span>';
 
+  let items = '';
   arr.forEach((item, i) => {
     const comma = i < arr.length - 1 ? '<span class="json-comma">,</span>' : '';
-    html += `\n${'  '.repeat(indent + 1)}${renderJson(item, indent + 1)}${comma}`;
+    items += `\n${'  '.repeat(indent + 1)}${renderJson(item, indent + 1)}${comma}`;
   });
 
-  html += `\n${'  '.repeat(indent)}</span>`;
-  html += '<span class="json-bracket">]</span>';
-  html += '</span>';
+  const content = `<span class="json-content"><span class="json-item">${items}\n${'  '.repeat(indent)}</span></span>`;
 
-  return html;
+  return `<span class="json-line">${open}${collapsedPreview}${content}${close}</span>`;
 }
 
 function handleToggle(e) {
   const target = e.target;
-  if (target.classList.contains('json-collapsible')) {
-    target.classList.toggle('collapsed');
+  if (target.classList.contains('json-toggle')) {
+    target.closest('.json-line').classList.toggle('collapsed');
   }
 }
 

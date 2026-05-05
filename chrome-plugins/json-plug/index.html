@@ -94,24 +94,27 @@
       overflow: auto;
     }
     /* 折叠/展开样式 */
-    .json-collapsible {
+    .json-toggle {
       cursor: pointer;
       user-select: none;
-    }
-    .json-collapsible::before {
-      content: '▼';
-      display: inline-block;
-      width: 16px;
       color: #808080;
-      font-size: 10px;
-      vertical-align: middle;
-      margin-right: 2px;
     }
-    .json-collapsible.collapsed::before {
-      content: '▶';
+    .json-toggle::before {
+      content: '▼ ';
     }
-    .json-collapsible.collapsed + .json-content {
+    .json-toggle.collapsed::before {
+      content: '▶ ';
+    }
+    .json-line.collapsed .json-content,
+    .json-line.collapsed ~ .json-close {
       display: none;
+    }
+    .json-line.collapsed .json-collapsed-preview {
+      display: inline;
+    }
+    .json-collapsed-preview {
+      display: none;
+      color: #808080;
     }
     .json-bracket {
       color: #808080;
@@ -123,15 +126,11 @@
     .json-null { color: #569cd6; }
     .json-colon { color: #d4d4d4; }
     .json-comma { color: #d4d4d4; }
-    .json-item {
-      margin-left: 20px;
-    }
-    .json-item:first-child {
-      margin-left: 0;
+    .json-line {
+      display: block;
     }
   </style>
-  <link rel="stylesheet" href="hljs-theme.min.css">
-</head>
+  </head>
 <body>
   <h1>JSON 格式化工具</h1>
   <div class="container">
@@ -147,7 +146,6 @@
       <pre id="output"></pre>
     </div>
   </div>
-  <script src="hljs.min.js"></script>
   <script src="index.js"></script>
 </body>
 </html>
