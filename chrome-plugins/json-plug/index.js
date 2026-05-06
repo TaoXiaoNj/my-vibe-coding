@@ -51,17 +51,17 @@ function formatJson() {
 
 function sp(n) { return '  '.repeat(n); }
 
-function buildLines(value, indent, isRoot, parentId) {
+function buildLines(value, indent, isRoot, parentId, keyName) {
   if (value === null) return [`<div class="jline">${sp(indent)}<span class="jnull">null</span></div>`];
   if (typeof value === 'boolean') return [`<div class="jline">${sp(indent)}<span class="jbool">${value}</span></div>`];
   if (typeof value === 'number') return [`<div class="jline">${sp(indent)}<span class="jnum">${value}</span></div>`];
   if (typeof value === 'string') return [`<div class="jline">${sp(indent)}<span class="jstr">"${escapeHtml(value)}"</span></div>`];
-  if (Array.isArray(value)) return buildArrayLines(value, indent, isRoot, parentId);
-  if (typeof value === 'object') return buildObjectLines(value, indent, isRoot, parentId);
+  if (Array.isArray(value)) return buildArrayLines(value, indent, isRoot, parentId, keyName);
+  if (typeof value === 'object') return buildObjectLines(value, indent, isRoot, parentId, keyName);
   return [`<div class="jline">${sp(indent)}${value}</div>`];
 }
 
-function buildObjectLines(obj, indent, isRoot, parentId) {
+function buildObjectLines(obj, indent, isRoot, parentId, keyName) {
   const keys = Object.keys(obj);
   const lines = [];
 
@@ -75,19 +75,14 @@ function buildObjectLines(obj, indent, isRoot, parentId) {
   if (isRoot) {
     lines.push(`<div class="jline">${sp(indent)}<span class="jbracket">{</span></div>`);
   } else {
-    lines.push(`<div class="jline jnode" data-id="${nodeId}">${sp(indent)}<span class="jtoggle" data-id="${nodeId}"></span><span class="jbracket">{</span><span class="jpreview" data-id="${nodeId}">...</span><span class="jclose" data-id="${nodeId}">}</span></div>`);
+    const keyHtml = keyName ? `<span class="jkey">"${escapeHtml(keyName)}"</span><span class="jcolon">:</span> ` : '';
+    lines.push(`<div class="jline jnode" data-id="${nodeId}">${sp(indent)}<span class="jtoggle" data-id="${nodeId}"></span>${keyHtml}<span class="jbracket">{</span><span class="jpreview" data-id="${nodeId}">...</span><span class="jclose" data-id="${nodeId}">}</span></div>`);
   }
 
   // Key-value pairs
   keys.forEach((key, i) => {
     const comma = i < keys.length - 1 ? ',' : '';
-    const keyHtml = `<span class="jkey">"${escapeHtml(key)}"</span><span class="jcolon">:</span> `;
-    const nested = buildLines(obj[key], indent + 1, false, nodeId);
-
-    // Add key to first line: insert keyHtml after indentation, before the value span
-    // Example: <div class="jline">  <span class="jnum">1</span></div>
-    // Becomes:   <div class="jline">  <span class="jkey">"a"</span><span class="jcolon">:</span> <span class="jnum">1</span></div>
-    nested[0] = nested[0].replace(/(<div class="jline">)( +)(<span class="j[^"]*">)/, `$1$2${keyHtml}$3`);
+    const nested = buildLines(obj[key], indent + 1, false, nodeId, key);
 
     // Add comma to last line: insert comma span before </div>
     // Example: <div class="jline">  <span class="jnum">1</span></div>
@@ -104,7 +99,7 @@ function buildObjectLines(obj, indent, isRoot, parentId) {
   return lines;
 }
 
-function buildArrayLines(arr, indent, isRoot, parentId) {
+function buildArrayLines(arr, indent, isRoot, parentId, keyName) {
   const lines = [];
 
   if (arr.length === 0) {
@@ -117,13 +112,14 @@ function buildArrayLines(arr, indent, isRoot, parentId) {
   if (isRoot) {
     lines.push(`<div class="jline">${sp(indent)}<span class="jbracket">[</span></div>`);
   } else {
-    lines.push(`<div class="jline jnode" data-id="${nodeId}">${sp(indent)}<span class="jtoggle" data-id="${nodeId}"></span><span class="jbracket">[</span><span class="jpreview" data-id="${nodeId}">...</span><span class="jclose" data-id="${nodeId}">]</span></div>`);
+    const keyHtml = keyName ? `<span class="jkey">"${escapeHtml(keyName)}"</span><span class="jcolon">:</span> ` : '';
+    lines.push(`<div class="jline jnode" data-id="${nodeId}">${sp(indent)}<span class="jtoggle" data-id="${nodeId}"></span>${keyHtml}<span class="jbracket">[</span><span class="jpreview" data-id="${nodeId}">...</span><span class="jclose" data-id="${nodeId}">]</span></div>`);
   }
 
   // Items
   arr.forEach((item, i) => {
     const comma = i < arr.length - 1 ? ',' : '';
-    const nested = buildLines(item, indent + 1, false, nodeId);
+    const nested = buildLines(item, indent + 1, false, nodeId, null);
     const last = nested[nested.length - 1];
     nested[nested.length - 1] = last.replace(/(<\/div>)$/, `<span class="jcomma">${comma}</span></div>`);
     lines.push(...nested);
