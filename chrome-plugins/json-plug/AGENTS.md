@@ -22,7 +22,9 @@
 ├── manifest.json  # Chrome 插件配置（Manifest V3）
 ├── background.js  # Service Worker，处理插件图标点击事件
 ├── index.html     # 插件主页面（点击图标后打开的标签页）
-└── index.js       # 页面交互逻辑（JSON 解析、格式化）
+├── index.js       # 页面交互逻辑（JSON 解析、格式化）
+└── docs/
+    └── DESIGN.md  # 页面布局与设计说明（供 AI 编码工具阅读）
 ```
 
 ## 使用方式

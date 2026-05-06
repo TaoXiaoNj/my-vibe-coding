@@ -3,9 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       width: 100vw;
       min-height: 100vh;
@@ -15,22 +13,20 @@
       background: #1e1e1e;
       color: #d4d4d4;
     }
-    h1 {
-      font-size: 20px;
-      margin: 0 0 20px 0;
-      color: #fff;
-    }
+    h1 { font-size: 20px; margin: 0 0 20px 0; color: #fff; }
     .container {
       display: flex;
       flex-direction: row;
       gap: 16px;
       height: calc(100vh - 80px);
+      align-items: stretch;
     }
     .panel {
       flex: 1;
       display: flex;
       flex-direction: column;
       gap: 12px;
+      min-height: 0;
     }
     textarea {
       flex: 1;
@@ -43,15 +39,11 @@
       font-family: 'Consolas', 'Monaco', monospace;
       font-size: 14px;
       resize: none;
+      min-height: 0;
+      box-sizing: border-box;
     }
-    textarea:focus {
-      outline: none;
-      border-color: #007acc;
-    }
-    .btn-group {
-      display: flex;
-      gap: 12px;
-    }
+    textarea:focus { outline: none; border-color: #007acc; }
+    .btn-group { display: flex; gap: 12px; }
     button {
       flex: 1;
       padding: 12px 20px;
@@ -61,28 +53,54 @@
       cursor: pointer;
       transition: background 0.2s;
     }
-    .btn-format {
-      background: #0e639c;
+    .btn-copy {
+      background: #2d653c;
       color: #fff;
+      flex: none;
+      padding: 12px 20px;
+      font-size: 14px;
+      width: 100%;
     }
-    .btn-format:hover {
-      background: #1177bb;
-    }
-    .btn-clear {
-      background: #3c3c3c;
-      color: #d4d4d4;
-    }
-    .btn-clear:hover {
-      background: #4a4a4a;
-    }
+    .btn-copy:hover { background: #3a7d4a; }
+    .btn-copy.copied { background: #4a7d4a; }
+    .btn-format { background: #0e639c; color: #fff; }
+    .btn-format:hover { background: #1177bb; }
+    .btn-clear { background: #3c3c3c; color: #d4d4d4; }
+    .btn-clear:hover { background: #4a4a4a; }
     #error {
       color: #f48771;
       font-size: 13px;
-      min-height: 20px;
       word-break: break-all;
+      position: fixed;
+      bottom: 24px;
+      left: 24px;
+      max-width: 400px;
+      background: #252526;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid #3c3c3c;
+      display: none;
+      z-index: 100;
+    }
+    #error.show { display: block; }
+    .panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 0;
+    }
+    .output-area {
+      flex: 1;
+      min-height: 0;
+      position: relative;
     }
     #output {
-      flex: 1;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
       margin: 0;
       padding: 14px;
       background: #252526;
@@ -93,44 +111,22 @@
       white-space: pre-wrap;
       overflow: auto;
     }
-    /* 折叠/展开样式 */
-    .json-toggle {
-      cursor: pointer;
-      user-select: none;
-      color: #808080;
-    }
-    .json-toggle::before {
-      content: '▼ ';
-    }
-    .json-toggle.collapsed::before {
-      content: '▶ ';
-    }
-    .json-line.collapsed .json-content,
-    .json-line.collapsed ~ .json-close {
-      display: none;
-    }
-    .json-line.collapsed .json-collapsed-preview {
-      display: inline;
-    }
-    .json-collapsed-preview {
-      display: none;
-      color: #808080;
-    }
-    .json-bracket {
-      color: #808080;
-    }
-    .json-key { color: #9cdcfe; }
-    .json-string { color: #ce9178; }
-    .json-number { color: #b5cea8; }
-    .json-boolean { color: #569cd6; }
-    .json-null { color: #569cd6; }
-    .json-colon { color: #d4d4d4; }
-    .json-comma { color: #d4d4d4; }
-    .json-line {
-      display: block;
-    }
+    .jline { display: block; white-space: pre; }
+    .jkey { color: #9cdcfe; }
+    .jstr { color: #ce9178; }
+    .jnum { color: #b5cea8; }
+    .jbool { color: #569cd6; }
+    .jnull { color: #569cd6; }
+    .jbracket { color: #808080; }
+    .jcolon { color: #d4d4d4; }
+    .jcomma { color: #d4d4d4; }
+    .jtoggle { cursor: pointer; user-select: none; color: #808080; }
+    .jtoggle::before { content: '▼ '; }
+    .jtoggle.collapsed::before { content: '▶ '; }
+    .jpreview { display: none; color: #808080; }
+    .jclose { display: none; color: #808080; }
   </style>
-  </head>
+</head>
 <body>
   <h1>JSON 格式化工具</h1>
   <div class="container">
@@ -143,7 +139,10 @@
       <div id="error"></div>
     </div>
     <div class="panel">
-      <pre id="output"></pre>
+      <div class="output-area">
+        <pre id="output"></pre>
+      </div>
+      <button class="btn-copy" id="copyBtn">复制结果</button>
     </div>
   </div>
   <script src="index.js"></script>
