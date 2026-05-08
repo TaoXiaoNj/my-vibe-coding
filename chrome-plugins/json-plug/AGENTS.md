@@ -59,6 +59,30 @@
 - [ ] 多格式互转（JSON ↔ YAML、JSON ↔ XML）
 - [ ] 大文件处理（分片渲染）
 
+## 测试与调试经验
+
+### 截图不可靠
+多模态 LLM 看代码渲染图不准确，可能遗漏细节或"脑补"内容。
+**做法**：用 `page.evaluate()` 直接检查 DOM 结构，验证 span class（jkey、jstr、jnum 等）是否存在。
+
+### 视觉渲染 vs 复制结果是两码事
+- 视觉：`innerHTML`（由 `buildLines()` 生成）
+- 剪贴板：`_formattedJson`（来自 `JSON.stringify`）
+之前 `buildLines()` 的 bug 只影响视觉，不影响剪贴板。
+**做法**：验证时两都要单独检查。
+
+### Playwright 子进程需要沙盒跳过
+子进程运行在隔离环境，没有沙盒绕过权限。Chromium headless shell 会报 `bootstrap_check_in Mach port permission denied`。
+**做法**：在 Bash 命令中加入 `dangerouslyDisableSandbox: true`。
+
+### 剪贴板 API 权限问题
+`navigator.clipboard.readText()` 会报 "Read permission denied"。
+**做法**：通过 `page.evaluate()` 直接访问 `_formattedJson` 变量。
+
+### Bug 模式：buildLines() 忽略 keyName
+`buildLines(value, indent, isRoot, parentId, keyName)` 接收了 `keyName`，但对 null、boolean、number、string 这些基础类型直接忽略了。
+**做法**：处理基础类型时，要在值前面加上 keyHtml。
+
 ## 当前进度
 
 - [x] JSON 语法高亮（自定义 CSS 类）

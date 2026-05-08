@@ -52,10 +52,11 @@ function formatJson() {
 function sp(n) { return '  '.repeat(n); }
 
 function buildLines(value, indent, isRoot, parentId, keyName) {
-  if (value === null) return [`<div class="jline">${sp(indent)}<span class="jnull">null</span></div>`];
-  if (typeof value === 'boolean') return [`<div class="jline">${sp(indent)}<span class="jbool">${value}</span></div>`];
-  if (typeof value === 'number') return [`<div class="jline">${sp(indent)}<span class="jnum">${value}</span></div>`];
-  if (typeof value === 'string') return [`<div class="jline">${sp(indent)}<span class="jstr">"${escapeHtml(value)}"</span></div>`];
+  const keyHtml = keyName ? `<span class="jkey">"${escapeHtml(keyName)}"</span><span class="jcolon">:</span> ` : '';
+  if (value === null) return [`<div class="jline">${sp(indent)}${keyHtml}<span class="jnull">null</span></div>`];
+  if (typeof value === 'boolean') return [`<div class="jline">${sp(indent)}${keyHtml}<span class="jbool">${value}</span></div>`];
+  if (typeof value === 'number') return [`<div class="jline">${sp(indent)}${keyHtml}<span class="jnum">${value}</span></div>`];
+  if (typeof value === 'string') return [`<div class="jline">${sp(indent)}${keyHtml}<span class="jstr">"${escapeHtml(value)}"</span></div>`];
   if (Array.isArray(value)) return buildArrayLines(value, indent, isRoot, parentId, keyName);
   if (typeof value === 'object') return buildObjectLines(value, indent, isRoot, parentId, keyName);
   return [`<div class="jline">${sp(indent)}${value}</div>`];
