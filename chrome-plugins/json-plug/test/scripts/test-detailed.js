@@ -1,169 +1,232 @@
 const { chromium } = require('playwright');
 const path = require('path');
+const fs = require('fs');
 
 const TEST_JSON = '{"name":"产品列表","items":[{"id":1,"name":"商品A","price":99.9,"inStock":true,"tags":["热门","促销"]},{"id":2,"name":"商品B","price":199,"inStock":false,"tags":["新品"]},{"id":3,"name":"商品C","price":49.5,"inStock":true,"tags":["清仓"]}],"total":348.4,"discount":null,"shipping":{"available":true,"methods":["普通快递","顺丰","EMS"]}}';
 
-async function runDetailedTest() {
-  const browser = await chromium.launch();
+async function runTest() {
+  const browser = await chromium.launch({
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  });
   const page = await browser.newPage();
 
+  // Open index.html
   const htmlPath = path.resolve('./index.html');
   await page.goto(`file://${htmlPath}`);
 
+  // Fill in the test JSON
   await page.fill('#input', TEST_JSON);
+
+  // Click format button
   await page.click('#formatBtn');
+
+  // Wait for rendering
   await page.waitForTimeout(500);
 
-  console.log('=== DETAILED DOM ANALYSIS ===\n');
+  // Use evaluate to check DOM structure
+  const results = await page.evaluate(() => {
+    const output = document.getElementById('output');
+    const lines = output.querySelectorAll('.jline');
 
-  // Get full HTML of output
-  const htmlOutput = await page.evaluate(() => document.getElementById('output').innerHTML);
+    const report = {
+      totalLines: lines.length,
+      lineDetails: [],
+      classCounts: {},
+      issues: []
+    };
 
-  // Parse to understand structure
-  console.log('--- First 2000 chars of HTML ---');
-  console.log(htmlOutput.substring(0, 2000));
-  console.log('\n...\n');
-
-  // Check key elements properly
-  const keyCheck = await page.evaluate(() => {
-    const keys = document.querySelectorAll('.jkey');
-    return Array.from(keys).map(k => k.textContent);
-  });
-  console.log('--- All jkey elements ---');
-  console.log(keyCheck);
-
-  // Check string values
-  const strCheck = await page.evaluate(() => {
-    const strs = document.querySelectorAll('.jstr');
-    return Array.from(strs).map(s => s.textContent);
-  });
-  console.log('\n--- All jstr elements ---');
-  console.log(strCheck);
-
-  // Check numbers
-  const numCheck = await page.evaluate(() => {
-    const nums = document.querySelectorAll('.jnum');
-    return Array.from(nums).map(n => n.textContent);
-  });
-  console.log('\n--- All jnum elements ---');
-  console.log(numCheck);
-
-  // Check booleans
-  const boolCheck = await page.evaluate(() => {
-    const bools = document.querySelectorAll('.jbool');
-    return Array.from(bools).map(b => b.textContent);
-  });
-  console.log('\n--- All jbool elements ---');
-  console.log(boolCheck);
-
-  // Check null
-  const nullCheck = await page.evaluate(() => {
-    const nulls = document.querySelectorAll('.jnull');
-    return Array.from(nulls).map(n => n.textContent);
-  });
-  console.log('\n--- All jnull elements ---');
-  console.log(nullCheck);
-
-  // Check brackets
-  const bracketCheck = await page.evaluate(() => {
-    const brackets = document.querySelectorAll('.jbracket');
-    return Array.from(brackets).map(b => b.textContent);
-  });
-  console.log('\n--- All jbracket elements ---');
-  console.log(bracketCheck);
-
-  // Get complete line text
-  const lineText = await page.evaluate(() => {
-    const lines = document.querySelectorAll('.jline');
-    return Array.from(lines).map(l => {
-      // Get text content but preserve structure
-      const spans = Array.from(l.querySelectorAll('span')).map(s => s.className + ':' + s.textContent);
-      return {
-        text: l.textContent,
-        spans: spans,
-        hasToggle: !!l.querySelector('.jtoggle'),
-        hasPreview: !!l.querySelector('.jpreview'),
-        hasClose: !!l.querySelector('.jclose')
-      };
+    // Count classes
+    const allSpans = output.querySelectorAll('span[class]');
+    allSpans.forEach(span => {
+      const cls = span.className;
+      report.classCounts[cls] = (report.classCounts[cls] || 0) + 1;
     });
-  });
 
-  console.log('\n--- Complete line analysis ---');
-  lineText.forEach((line, idx) => {
-    console.log(`Line ${idx + 1}: "${line.text}"`);
-    if (line.hasToggle) {
-      console.log(`  [Toggle detected, hasPreview: ${line.hasPreview}, hasClose: ${line.hasClose}]`);
+    // Check each line
+    lines.forEach((line, idx) => {
+      const text = line.textContent;
+      const hasCorrectIndent = text.startsWith('  ') || text.trim() === '' || text === '{' || text === '}' || text === '[' || text === ']';
+
+      // Check for proper closing brackets
+      const hasCloseSpan = line.querySelector('.jbracket') !== null ||
+                           line.querySelector('.jclose') !== null ||
+                           line.querySelector('.jcomma') !== null;
+
+      report.lineDetails.push({
+        lineNum: idx + 1,
+        text: text.substring(0, 80),
+        hasCloseSpan,
+        spanClasses: Array.from(line.querySelectorAll('span[class]')).map(s => s.className).join(', ')
+      });
+    });
+
+    // Verify expected structure
+    const expectedKeys = ['name', 'items', 'total', 'discount', 'shipping'];
+    const allText = output.textContent;
+
+    expectedKeys.forEach(key => {
+      if (!allText.includes(`"${key}"`)) {
+        report.issues.push(`Missing key: ${key}`);
+      }
+    });
+
+    // Check for proper nesting
+    if (!allText.includes('"产品列表"')) {
+      report.issues.push('Missing value: 产品列表');
     }
-  });
 
-  // Verify specific expected values
-  console.log('\n--- Verification of Expected Values ---');
-  const expectedValues = [
-    '"name"', '"产品列表"', '"items"', '"id"', '1', '"name"', '"商品A"',
-    '99.9', 'true', '"tags"', '"热门"', '"促销"', '2', '"商品B"', '199',
-    'false', '"新品"', '3', '"商品C"', '49.5', 'true', '"清仓"',
-    '"total"', '348.4', '"discount"', 'null', '"shipping"', '"available"',
-    'true', '"methods"', '"普通快递"', '"顺丰"', '"EMS"'
-  ];
-
-  const allText = htmlOutput;
-  let missing = [];
-  expectedValues.forEach(val => {
-    if (!allText.includes(val)) {
-      missing.push(val);
+    // Check for arrays
+    if (!allText.includes('"热门"') || !allText.includes('"促销"')) {
+      report.issues.push('Missing array items in tags');
     }
+
+    // Check for null
+    if (!allText.includes('null')) {
+      report.issues.push('Missing null value');
+    }
+
+    // Check for numbers
+    if (!allText.includes('99.9') || !allText.includes('348.4')) {
+      report.issues.push('Missing number values');
+    }
+
+    // Check for booleans
+    if (!allText.includes('true') || !allText.includes('false')) {
+      report.issues.push('Missing boolean values');
+    }
+
+    return report;
   });
 
-  if (missing.length === 0) {
-    console.log('All expected values found in output!');
+  console.log('=== JSON Formatter Test Results ===\n');
+  console.log(`Total lines rendered: ${results.totalLines}`);
+  console.log('\nClass distribution:');
+  Object.entries(results.classCounts).forEach(([cls, count]) => {
+    console.log(`  ${cls}: ${count}`);
+  });
+
+  console.log('\nLine details (first 30 lines):');
+  results.lineDetails.slice(0, 30).forEach(line => {
+    console.log(`  Line ${line.lineNum}: "${line.text}" [${line.spanClasses}]`);
+  });
+
+  if (results.issues.length > 0) {
+    console.log('\n=== ISSUES FOUND ===');
+    results.issues.forEach(issue => console.log(`  - ${issue}`));
   } else {
-    console.log('Missing values:', missing);
+    console.log('\n=== No structural issues found ===');
   }
 
-  // Check comma placement
-  console.log('\n--- Comma Placement Check ---');
-  const commaCheck = await page.evaluate(() => {
-    const commas = document.querySelectorAll('.jcomma');
-    return Array.from(commas).map(c => ({
-      text: c.textContent,
-      parentLine: c.closest('.jline')?.textContent?.substring(0, 50)
-    }));
-  });
-  console.log(`Total commas: ${commaCheck.length}`);
-  commaCheck.forEach((c, i) => {
-    console.log(`  ${i + 1}: "${c.text}" in: "${c.parentLine}..."`);
-  });
-
-  // Check toggle collapse functionality more thoroughly
-  console.log('\n--- Toggle Functionality Test ---');
-
-  // Find all collapsible nodes
-  const collapsibleNodes = await page.evaluate(() => {
+  // Additional DOM checks
+  const toggleCheck = await page.evaluate(() => {
     const toggles = document.querySelectorAll('.jtoggle');
-    return Array.from(toggles).map(t => {
-      const id = t.getAttribute('data-id');
-      const preview = document.querySelector(`.jpreview[data-id="${id}"]`);
-      const close = document.querySelector(`.jclose[data-id="${id}"]`);
-      const parentLine = t.closest('.jline');
-      return {
-        id,
-        previewText: preview?.textContent,
-        closeText: close?.textContent,
-        parentLineText: parentLine?.textContent?.substring(0, 60)
-      };
-    });
+    const collapsed = document.querySelectorAll('.jtoggle.collapsed');
+    const previews = document.querySelectorAll('.jpreview');
+    const closes = document.querySelectorAll('.jclose');
+
+    return {
+      toggleCount: toggles.length,
+      collapsedCount: collapsed.length,
+      previewCount: previews.length,
+      closeCount: closes.length,
+      firstToggleHtml: toggles[0]?.outerHTML || 'none'
+    };
   });
 
-  console.log('Collapsible nodes:');
-  collapsibleNodes.forEach((node, i) => {
-    console.log(`  ${i + 1}. id=${node.id}, preview="${node.previewText}", close="${node.closeText}"`);
-    console.log(`     Parent: "${node.parentLineText}..."`);
+  console.log('\n=== Toggle/Collapse Structure ===');
+  console.log(`Toggle elements: ${toggleCheck.toggleCount}`);
+  console.log(`Collapsed toggles: ${toggleCheck.collapsedCount}`);
+  console.log(`Preview spans: ${toggleCheck.previewCount}`);
+  console.log(`Close spans: ${toggleCheck.closeCount}`);
+  console.log(`First toggle HTML: ${toggleCheck.firstToggleHtml}`);
+
+  // Test collapse functionality
+  console.log('\n=== Testing Collapse/Expand ===');
+
+  // Get toggle count before click
+  const togglesBefore = await page.evaluate(() => document.querySelectorAll('.jtoggle').length);
+
+  // Click first toggle (items array)
+  await page.evaluate(() => {
+    const firstToggle = document.querySelector('.jtoggle');
+    if (firstToggle) firstToggle.click();
   });
+  await page.waitForTimeout(200);
+
+  const afterClick = await page.evaluate(() => {
+    const firstToggle = document.querySelector('.jtoggle');
+    const isCollapsed = firstToggle?.classList.contains('collapsed');
+    const visibleLines = Array.from(document.querySelectorAll('.jline')).filter(l => l.style.display !== 'none').length;
+    return { isCollapsed, visibleLines };
+  });
+
+  console.log(`Before click: ${togglesBefore} toggles`);
+  console.log(`After click - collapsed: ${afterClick.isCollapsed}, visible lines: ${afterClick.visibleLines}`);
+
+  // Click again to expand
+  await page.evaluate(() => {
+    const firstToggle = document.querySelector('.jtoggle');
+    if (firstToggle) firstToggle.click();
+  });
+  await page.waitForTimeout(200);
+
+  const afterExpand = await page.evaluate(() => {
+    const firstToggle = document.querySelector('.jtoggle');
+    const isCollapsed = firstToggle?.classList.contains('collapsed');
+    const visibleLines = Array.from(document.querySelectorAll('.jline')).filter(l => l.style.display !== 'none').length;
+    return { isCollapsed, visibleLines };
+  });
+
+  console.log(`After expand - collapsed: ${afterExpand.isCollapsed}, visible lines: ${afterExpand.visibleLines}`);
+
+  // Check indentation correctness
+  console.log('\n=== Indentation Check ===');
+  const indentCheck = await page.evaluate(() => {
+    const lines = document.querySelectorAll('.jline');
+    const issues = [];
+
+    lines.forEach((line, idx) => {
+      const text = line.textContent;
+      // Count leading spaces
+      let spaces = 0;
+      for (const ch of text) {
+        if (ch === ' ') spaces++;
+        else break;
+      }
+
+      // Expected indent based on nesting depth
+      const expectedBase = Math.floor(spaces / 2) * 2;
+      const actualSpaces = spaces;
+
+      // Check if indent is a multiple of 2
+      if (spaces % 2 !== 0) {
+        issues.push(`Line ${idx + 1}: Odd number of spaces (${spaces}): "${text.substring(0, 40)}..."`);
+      }
+    });
+
+    return issues;
+  });
+
+  if (indentCheck.length > 0) {
+    console.log('Indentation issues:');
+    indentCheck.forEach(i => console.log(`  - ${i}`));
+  } else {
+    console.log('All indentation looks correct (multiples of 2 spaces)');
+  }
+
+  // Save screenshot
+  const screenshotDir = fs.mkdtempSync(path.join(__dirname, '..', 'tools', 'test-output-')); // 放 test/tools/ 下，会被 .gitignore 忽略
+
+  const timestamp = Date.now();
+  const screenshotPath = path.join(screenshotDir, `test-json-formatter-${timestamp}.png`);
+  await page.screenshot({ path: screenshotPath, fullPage: true });
+  console.log(`\nScreenshot saved to: ${screenshotPath}`);
 
   await browser.close();
+  console.log('\n=== Test Complete ===');
 }
 
-runDetailedTest().catch(err => {
+runTest().catch(err => {
   console.error('Test failed:', err);
   process.exit(1);
 });
